@@ -32,7 +32,7 @@ export async function generateWebsite(
       Authorization: `Bearer ${runtimeEnv.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.any([signal, AbortSignal.timeout(90000)]),
     body: JSON.stringify({
       model: websiteModel,

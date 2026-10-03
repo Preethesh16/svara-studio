@@ -27,7 +27,7 @@ export async function provider(
       ? AbortSignal.any([signal, AbortSignal.timeout(90000)])
       : AbortSignal.timeout(90000),
     cache: "no-store",
-    redirect: "error",
+    redirect: "manual",
   });
   if (!r.ok)
     throw new Error(

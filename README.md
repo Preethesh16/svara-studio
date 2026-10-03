@@ -8,9 +8,9 @@ Chat, images and voice use CallMissed. Custom website generation uses OpenAI dir
 
 Vinext on Cloudflare Workers through Sites. D1 stores atomic spending reservations, login attempts and website ownership/publication metadata. R2 stores generated HTML documents. Runtime keys are Sites secrets, absent from source and client bundles.
 
-The hosted CallMissed allowance is $5. The existing local app retains its $14 allowance; combined allocations are $19, leaving $1 of the internship budget unallocated. Reservations remain consumed after failures and must not be reset. OpenAI has a separate allowance and defaults to zero until the user specifies a total limit. Each website reserves 10 cents before its bounded request. Provider billing may differ from reservations.
+The hosted CallMissed allowance is $5. The existing local app retains its $14 allowance; combined allocations are $19, leaving $1 of the internship budget unallocated. Reservations remain consumed after failures and must not be reset. OpenAI has a separate $4 total hosted allowance, authorized by the user. The local app’s OpenAI allowance stays zero to avoid double allocation. Each website reserves 10 cents before its bounded request. Provider billing may differ from reservations.
 
-New Sites are private to their owner. A generated website's publish action makes it available within the Site's existing audience; it does not bypass Sites access restrictions. Chat history and drafts remain device-local. Website ownership currently follows the reviewer cookie, which expires after one day; permanent accounts and recovery are not implemented.
+The Site is now public at the user’s request. AI operations still require the reviewer code. A generated website's publish action makes it available within the Site's existing audience; it does not bypass Sites access restrictions. Chat history and drafts remain device-local. Website ownership currently follows the reviewer cookie, which expires after one day; permanent accounts and recovery are not implemented.
 
 ## Development
 
