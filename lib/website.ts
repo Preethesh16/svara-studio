@@ -70,6 +70,7 @@ export function websiteDocument(raw: unknown, image?: string) {
     allowedSchemes: ["https", "http", "mailto", "tel"],
     allowedSchemesByTag: { img: ["data"] },
     allowProtocolRelative: false,
+    exclusiveFilter: (frame) => frame.tag === "img" && !frame.attribs.src,
     transformTags: {
       a: (_t, a) => ({
         tagName: "a",

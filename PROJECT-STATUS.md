@@ -30,3 +30,7 @@
 ## Sites deployment
 
 Expanded app deployed privately at https://svara-campaign-studio.preetheshcarvalho57.chatgpt.site. Hosting source is in the sites-deployment GitHub branch and sibling svara-sites checkout. It uses D1 atomic reservations and R2 document storage. Hosted CallMissed allocation $5 plus existing local $14 allocation leaves $1 unallocated. OpenAI key configured; allowance remains zero pending user answer. Hosted voice still needs user testing.
+
+## Public launch and live website verification
+
+User authorized public access and a $4 OpenAI allowance. The hosted app is public, with reviewer-code protection for paid tools. Live OpenAI generation returned a custom demo page and promotional copy (1,618 provider-reported tokens). Preview, automatic publication, opening the published page, and unpublishing were verified in the hosted browser. Two requests reserved 20 cents total: one failed before provider contact because of a Worker request setting; the corrected request succeeded. Hosted provider adapters now use manual redirect handling. Empty image placeholders are removed. Local OpenAI stays disabled to avoid a second $4 allocation. Browser automation could not confirm HTML download completion.
