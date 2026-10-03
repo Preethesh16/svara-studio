@@ -28,24 +28,8 @@ import { WebsiteStudio } from "@/components/WebsiteStudio";
 import { VoiceCommands, type VoiceKind } from "@/lib/voice-actions";
 import type { WebsiteResult } from "@/lib/website";
 import { readSSE } from "@/lib/sse";
+import { restoreSessions, type Message, type Session } from "@/lib/sessions";
 import type { Room as RoomType } from "livekit-client";
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-  source?: "voice";
-};
-type Session = {
-  id: string;
-  title: string;
-  messages: Message[];
-  prompt: string;
-  image?: string;
-  imageModel?: string;
-  imagePrompt?: string;
-  websiteBrief?: string;
-  website?: WebsiteResult;
-  created: number;
-};
 const fresh = (): Session => ({
   id: crypto.randomUUID(),
   title: "Untitled session",
@@ -120,12 +104,7 @@ export default function Studio() {
   useEffect(() => {
     let saved: Session[] = [];
     try {
-      saved = JSON.parse(localStorage.getItem("svara-sessions") || "[]");
-      if (
-        !Array.isArray(saved) ||
-        saved.some((s) => !s.id || !Array.isArray(s.messages))
-      )
-        saved = [];
+      saved = restoreSessions(localStorage.getItem("svara-sessions"));
     } catch {}
     if (!saved.length) saved = [fresh()];
     setSessions(saved);
