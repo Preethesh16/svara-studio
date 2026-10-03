@@ -14,7 +14,7 @@
 - Mocked chat streaming, abort-signal propagation and server model/output limits.
 - Mocked voice session minting enforces Sarvam speech and 60 seconds; only the owning reviewer session can terminate it.
 
-`npm run typecheck`: passed. `npm run build`: passed before final documentation; final production build repeated after changes. `npm audit --omit=dev`: zero known vulnerabilities at test time. Native SQLite initially had a Node ABI mismatch; rebuilt for the project runtime and reran tests successfully.
+`npm run typecheck`: passed. `npm run build`: passed again after final implementation changes. `npm audit --omit=dev`: zero known vulnerabilities at test time. Native SQLite initially had a Node ABI mismatch; rebuilt for the project runtime and reran tests successfully.
 
 ## Real CallMissed checks
 
@@ -51,3 +51,5 @@ All paid checks were sent through the app's reservation boundary. Five paid oper
 - Docker runtime and deployed HTTPS behavior, durable storage across deployment, production voice and mobile audio.
 
 No test auto-starts a microphone or image operation on page load. Browser image testing was an explicit one-time integration check; the reusable automated suite uses mocks and cannot consume credits.
+
+Secret scan: 28 staged source/configuration files and 17 browser JavaScript assets contained no API key. Environment files, runtime ledger and smoke-test artifacts are ignored.

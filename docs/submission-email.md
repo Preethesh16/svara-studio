@@ -6,7 +6,7 @@ Hi Durvesh,
 I’ve built Svara Studio, a multilingual creative workspace using only the CallMissed API. It brings together streaming chat, image generation after explicit prompt approval, and browser voice sessions with English/Hindi controls.
 
 Hosted app: [add verified HTTPS URL]
-GitHub: [add repository URL]
+GitHub: https://github.com/Preethesh16/svara-studio
 Reviewer access code: [send the private deployment code here; never the API key]
 
 The café campaign scenario connects the features while keeping each independently usable. The app includes durable budget reservations, short voice sessions, clear failure states, and local conversation history.

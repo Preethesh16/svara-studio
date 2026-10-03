@@ -9,6 +9,6 @@
 - [x] Production build, dependency audit and deployment documentation prepared.
 - [x] Desktop/mobile layout inspected; actual screenshot evidence captured (full accessibility audit pending).
 - [ ] Verify actual microphone/audio, Hindi speech, interruption and disconnect behavior.
-- [ ] Secret scan and GitHub publication.
+- [x] Secret scan passed; published https://github.com/Preethesh16/svara-studio.
 - [ ] Free hosting access, deployment and hosted verification.
 - [ ] Fill final submission links; email remains an unsent draft.
