@@ -1,5 +1,19 @@
 # Verification record — 3 October 2026
 
+## Current automated checks
+
+GitHub Actions runs `npm ci`, `npm test`, `npm run typecheck` and `npm run build`
+on pull requests and pushes to `main`, using the documented Node 22 runtime.
+The workflow uses a read-only repository token, pinned action revisions and a
+ten-minute timeout. Superseded runs on the same branch are cancelled.
+
+The current suite has **61 passing tests**, including allowance and legacy-ledger
+validation, SSE framing/cancellation and recovery of partially malformed saved
+sessions. Provider calls use mocks and SQLite fixtures use temporary directories.
+No provider credentials, live smoke scripts, microphone operations or deployment
+steps are part of CI. The live checks below are historical manual observations,
+not operations repeated by the workflow.
+
 ## Automated, mocked where stated
 
 `npm test`: **9 passed**.
