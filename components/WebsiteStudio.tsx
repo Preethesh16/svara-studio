@@ -1,0 +1,413 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowUpRight,
+  Check,
+  Copy,
+  Download,
+  Globe,
+  LoaderCircle,
+  Monitor,
+  Smartphone,
+  Sparkles,
+  X,
+  Undo2,
+} from "lucide-react";
+import type { WebsiteResult } from "@/lib/website";
+type Props = {
+  brief: string;
+  image?: string;
+  result?: WebsiteResult;
+  onBrief: (s: string) => void;
+  onResult: (r: WebsiteResult) => void;
+  onClose: () => void;
+};
+export function WebsiteStudio({
+  brief,
+  image,
+  result,
+  onBrief,
+  onResult,
+  onClose,
+}: Props) {
+  const [busy, setBusy] = useState(""),
+    [error, setError] = useState(""),
+    [enabled, setEnabled] = useState<boolean | null>(null),
+    [mobile, setMobile] = useState(false),
+    [copy, setCopy] = useState(""),
+    [embed, setEmbed] = useState(true),
+    [autoPublish, setAutoPublish] = useState(false);
+  const lock = useRef(false),
+    dialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    void fetch("/api/website")
+      .then((r) => r.json())
+      .then((d) => setEnabled(!!d.enabled))
+      .catch(() => setEnabled(false));
+    const old = document.activeElement as HTMLElement;
+    dialog.current?.focus();
+    return () => old?.focus();
+  }, []);
+  async function send(body: unknown) {
+    const r = await fetch("/api/website", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Website request failed.");
+    return d;
+  }
+  async function generate() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy("generate");
+    setError("");
+    try {
+      const d: WebsiteResult = await send({
+        action: "generate",
+        requestId: crypto.randomUUID(),
+        brief,
+        image: embed ? image : undefined,
+      });
+      onResult(d);
+      if (autoPublish) {
+        setBusy("publish");
+        const publication = await send({
+          action: "publish",
+          id: d.id,
+          publish: true,
+        });
+        onResult({ ...d, publicPath: publication.publicPath });
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy("");
+      lock.current = false;
+    }
+  }
+  async function publish() {
+    if (!result || lock.current) return;
+    lock.current = true;
+    setBusy("publish");
+    setError("");
+    try {
+      const d = await send({
+        action: "publish",
+        id: result.id,
+        publish: !result.publicPath,
+      });
+      onResult({ ...result, publicPath: d.publicPath || undefined });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy("");
+      lock.current = false;
+    }
+  }
+  async function clipboard(text: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopy(key);
+      setTimeout(() => setCopy(""), 1800);
+    } catch {
+      setError("Clipboard is unavailable. Select and copy the text below.");
+    }
+  }
+  function download() {
+    if (!result) return;
+    const url = URL.createObjectURL(
+      new Blob([result.document], { type: "text/html" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "my-business-website.html";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function keyboard(e: React.KeyboardEvent) {
+    if (e.key === "Escape" && !busy) onClose();
+    if (e.key === "Tab") {
+      const els = Array.from(
+        dialog.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), textarea, input, a[href], [tabindex="0"]',
+        ) || [],
+      );
+      const first = els[0],
+        last = els[els.length - 1];
+      if (
+        e.shiftKey &&
+        (document.activeElement === first ||
+          document.activeElement === dialog.current)
+      ) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    }
+  }
+  return (
+    <div className="site-overlay">
+      <div
+        className="site-studio"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Business website studio"
+        tabIndex={-1}
+        ref={dialog}
+        onKeyDown={keyboard}
+      >
+        <div className="site-top">
+          <div>
+            <span className="eyebrow">FROM A LOCAL IDEA TO AN ONLINE HOME</span>
+            <h2>
+              <Globe size={23} /> Your business, on the web.
+            </h2>
+          </div>
+          <button
+            className="icon-btn"
+            aria-label="Close website studio"
+            disabled={!!busy}
+            onClick={onClose}
+          >
+            <X size={21} />
+          </button>
+        </div>
+        <div className="site-layout">
+          <section className="site-controls">
+            <span className="step-label">01 / THE BRIEF</span>
+            <h3>
+              Tell your story.
+              <br />
+              We’ll build around it.
+            </h3>
+            <p>
+              Describe your business, your customers and the feeling you want.
+              Add only the contact details you want visitors to see.
+            </p>
+            <label htmlFor="website-brief">
+              What should your website be like?
+            </label>
+            <textarea
+              id="website-brief"
+              maxLength={4000}
+              value={brief}
+              onChange={(e) => onBrief(e.target.value)}
+              placeholder="A playful website for my Bengaluru bakery. Showcase sourdough and weekend brunch. Warm colors, big type, an about section…"
+            />
+            <div className="site-presets">
+              {["Neighborhood café", "Home bakery", "Creative salon"].map(
+                (name, i) => (
+                  <button
+                    key={name}
+                    onClick={() =>
+                      onBrief(
+                        [
+                          `Build a welcoming website for my neighborhood café. Use warm cream and espresso tones, editorial typography, a menu section and space for my address. Do not invent contact details.`,
+                          `Build a playful website for my home bakery. Showcase handmade cakes and weekend specials with a soft peach palette and bold typography. Leave unknown prices and contact details out.`,
+                          `Build an expressive website for my creative salon. Use confident typography, violet accents and a services section. Add booking contact details only after I provide them.`,
+                        ][i],
+                      )
+                    }
+                  >
+                    {name}
+                  </button>
+                ),
+              )}
+            </div>
+            {image && (
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={embed}
+                  onChange={(e) => setEmbed(e.target.checked)}
+                />{" "}
+                Include my campaign poster
+              </label>
+            )}
+            <label className="check-line">
+              <input
+                type="checkbox"
+                checked={autoPublish}
+                onChange={(e) => setAutoPublish(e.target.checked)}
+              />{" "}
+              Publish automatically when generation finishes
+            </label>
+            <small className="publish-explanation">
+              Publishing creates a page on this app’s host. A localhost link
+              stays local until the app is deployed.
+            </small>
+            <button
+              className="generate"
+              disabled={!!busy || brief.trim().length < 20 || enabled !== true}
+              onClick={() => void generate()}
+            >
+              {busy === "generate" ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Sparkles size={16} />
+              )}{" "}
+              {busy === "generate"
+                ? "Designing your website…"
+                : "Build my website"}
+            </button>
+            <p className="site-cost">
+              OpenAI · GPT-4.1 mini · $0.10 reserved per request
+              <br />
+              Separate from your CallMissed allowance
+            </p>
+            {enabled === false && (
+              <div className="setup-note">
+                <strong>Website generation is paused</strong>
+                <span>
+                  Your brief is saved. Website generation becomes available when
+                  the server key and separate allowance are configured.
+                </span>
+              </div>
+            )}
+            {error && (
+              <div className="feedback error" role="alert">
+                {error}
+              </div>
+            )}
+          </section>
+          <section className="site-output">
+            <div className="preview-toolbar">
+              <span>{result ? "02 / YOUR WEBSITE" : "02 / LIVE PREVIEW"}</span>
+              <div>
+                <button
+                  aria-label="Desktop website preview"
+                  aria-pressed={!mobile}
+                  onClick={() => setMobile(false)}
+                >
+                  <Monitor size={16} />
+                </button>
+                <button
+                  aria-label="Mobile website preview"
+                  aria-pressed={mobile}
+                  onClick={() => setMobile(true)}
+                >
+                  <Smartphone size={16} />
+                </button>
+              </div>
+            </div>
+            <div className={`website-preview ${mobile ? "phone-preview" : ""}`}>
+              {result ? (
+                <iframe
+                  title="Generated business website preview"
+                  sandbox=""
+                  srcDoc={result.document}
+                />
+              ) : (
+                <div className="website-placeholder">
+                  <div className="blueprint">
+                    <div />
+                    <div />
+                    <div />
+                    <div />
+                  </div>
+                  <span className="eyebrow">BUILT FROM YOUR BRIEF</span>
+                  <h3>
+                    A little business.
+                    <br />A big first impression.
+                  </h3>
+                  <p>
+                    Your custom website will appear here.
+                    <br />
+                    Preview it on desktop and mobile before sharing.
+                  </p>
+                </div>
+              )}
+              {busy === "generate" && (
+                <div className="building-overlay" role="status">
+                  <LoaderCircle className="spin" size={28} />
+                  <strong>Turning your story into a website</strong>
+                  <span>
+                    Writing the page, designing the layout, preparing your copy.
+                  </span>
+                </div>
+              )}
+            </div>
+            {result && (
+              <>
+                <div className="website-actions">
+                  <strong>{result.title}</strong>
+                  <button onClick={download}>
+                    <Download size={15} /> Download HTML
+                  </button>
+                  <button disabled={!!busy} onClick={() => void publish()}>
+                    {result.publicPath ? (
+                      <Undo2 size={15} />
+                    ) : (
+                      <Globe size={15} />
+                    )}{" "}
+                    {result.publicPath ? "Unpublish" : "Publish page"}
+                  </button>
+                </div>
+                {result.publicPath && (
+                  <div className="published-link">
+                    <a
+                      href={result.publicPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open published page <ArrowUpRight size={14} />
+                    </a>
+                    <button
+                      onClick={() =>
+                        void clipboard(
+                          location.origin + result.publicPath,
+                          "link",
+                        )
+                      }
+                    >
+                      {copy === "link" ? (
+                        <Check size={14} />
+                      ) : (
+                        <Copy size={14} />
+                      )}{" "}
+                      Copy link
+                    </button>
+                  </div>
+                )}
+                <div className="copy-kit">
+                  {[
+                    ["caption", "Social caption", result.caption],
+                    ["whatsapp", "WhatsApp copy", result.whatsapp],
+                  ].map(([key, title, value]) => (
+                    <article key={key}>
+                      <div>
+                        <h4>{title}</h4>
+                        <button
+                          aria-label={`Copy ${title}`}
+                          onClick={() => void clipboard(value, key)}
+                        >
+                          {copy === key ? (
+                            <Check size={14} />
+                          ) : (
+                            <Copy size={14} />
+                          )}
+                        </button>
+                      </div>
+                      <p>{value}</p>
+                    </article>
+                  ))}
+                </div>
+                <p className="site-result-note">
+                  Generated with {result.model}{" "}
+                  {result.usage
+                    ? `· ${result.usage} provider-reported tokens`
+                    : ""}{" "}
+                  · Review business details before sharing.
+                </p>
+              </>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

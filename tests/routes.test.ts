@@ -101,10 +101,34 @@ test("chat streams and forwards cancellation; client cannot change the model", a
   assert.equal(JSON.parse(String(captured?.body)).max_tokens, 650);
 });
 
-test('voice minting uses bounded Sarvam settings and cleanup is owner-scoped', async()=>{
- process.env.APP_LIMIT_CENTS='200';const id=randomUUID();let options:RequestInit|undefined;
- global.fetch=async(_url,init)=>{options=init;if(init?.method==='DELETE')return new Response(null,{status:204});return Response.json({id,ws_url:'wss://media.callmissed.test',token:'session-only-test-token',config:{llm_model:'sarvam-105b'}})};
- const r=await POST(request('voice',{requestId:randomUUID(),language:'hi-IN'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.token,'session-only-test-token');assert.equal(JSON.parse(String(options?.body)).max_duration_seconds,60);assert.equal(JSON.parse(String(options?.body)).tts_model,'bulbul:v3');
- const foreign=request('end',{requestId:randomUUID(),id});foreign.headers.set('cookie','svara='+issue());assert.equal((await POST(foreign)).status,404);
- assert.equal((await POST(request('end',{requestId:randomUUID(),id}))).status,200);assert.equal(options?.method,'DELETE');
+test("voice minting uses bounded Sarvam settings and cleanup is owner-scoped", async () => {
+  process.env.APP_LIMIT_CENTS = "200";
+  const id = randomUUID();
+  let options: RequestInit | undefined;
+  global.fetch = async (_url, init) => {
+    options = init;
+    if (init?.method === "DELETE") return new Response(null, { status: 204 });
+    return Response.json({
+      id,
+      ws_url: "wss://media.callmissed.test",
+      token: "session-only-test-token",
+      config: { llm_model: "sarvam-105b" },
+    });
+  };
+  const r = await POST(
+    request("voice", { requestId: randomUUID(), language: "hi-IN" }),
+  );
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.token, "session-only-test-token");
+  assert.equal(JSON.parse(String(options?.body)).max_duration_seconds, 60);
+  assert.equal(JSON.parse(String(options?.body)).tts_model, "bulbul:v3");
+  const foreign = request("end", { requestId: randomUUID(), id });
+  foreign.headers.set("cookie", "svara=" + issue());
+  assert.equal((await POST(foreign)).status, 404);
+  assert.equal(
+    (await POST(request("end", { requestId: randomUUID(), id }))).status,
+    200,
+  );
+  assert.equal(options?.method, "DELETE");
 });

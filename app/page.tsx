@@ -16,13 +16,17 @@ import {
   Download,
   Trash2,
   PanelLeft,
-  Headphones,
+  Globe,
+  ArrowUpRight,
   Sparkles,
   X,
   Square,
   Coffee,
   LockKeyhole,
 } from "lucide-react";
+import { WebsiteStudio } from "@/components/WebsiteStudio";
+import { voiceDraftIntent } from "@/lib/voice-draft";
+import type { WebsiteResult } from "@/lib/website";
 import { SSEDecoder } from "@/lib/sse";
 import type { Room as RoomType } from "livekit-client";
 type Message = {
@@ -38,6 +42,8 @@ type Session = {
   image?: string;
   imageModel?: string;
   imagePrompt?: string;
+  websiteBrief?: string;
+  website?: WebsiteResult;
   created: number;
 };
 const fresh = (): Session => ({
@@ -72,6 +78,8 @@ export default function Studio() {
     [notice, setNotice] = useState(""),
     [tab, setTab] = useState("chat"),
     [sidebar, setSidebar] = useState(false);
+  const [siteOpen, setSiteOpen] = useState(false);
+  const transcriptSeen = useRef(new Set<string>());
   const [code, setCode] = useState(""),
     [unlocked, setUnlocked] = useState(false),
     [authChecked, setAuthChecked] = useState(false);
@@ -340,6 +348,7 @@ export default function Studio() {
     voiceLock.current = true;
     const epoch = ++voiceEpoch.current;
     const target = active;
+    transcriptSeen.current.clear();
     setVoice("Connecting");
     setError("");
     setElapsed(0);
@@ -372,22 +381,48 @@ export default function Studio() {
         }
       });
       r.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
-        for (const seg of segments)
-          if (seg.final)
-            update(
-              (s) => ({
-                ...s,
-                messages: [
-                  ...s.messages,
-                  {
-                    role: participant?.isLocal ? "user" : "assistant",
-                    content: seg.text,
-                    source: "voice",
-                  },
-                ],
-              }),
-              target,
+        for (const seg of segments) {
+          if (!seg.final || transcriptSeen.current.has(seg.id)) continue;
+          transcriptSeen.current.add(seg.id);
+          const isUser = participant?.isLocal === true;
+          update(
+            (s) => ({
+              ...s,
+              messages: [
+                ...s.messages,
+                {
+                  role: isUser ? "user" : "assistant",
+                  content: seg.text,
+                  source: "voice",
+                },
+              ],
+            }),
+            target,
+          );
+          const intent = isUser ? voiceDraftIntent(seg.text) : null;
+          if (intent) {
+            setText((current) =>
+              [current, seg.text].filter(Boolean).join("\n").slice(0, 4000),
             );
+            if (intent === "image") {
+              update(
+                (s) => ({ ...s, prompt: seg.text.slice(0, 2000) }),
+                target,
+              );
+              setNotice(
+                "Your spoken image request is now an editable chat draft and image brief. Review it before generating.",
+              );
+            } else {
+              update(
+                (s) => ({ ...s, websiteBrief: seg.text.slice(0, 4000) }),
+                target,
+              );
+              setNotice(
+                "Your spoken website request is saved. Open Website studio to refine and build it.",
+              );
+            }
+          }
+        }
       });
       r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
         if (epoch === voiceEpoch.current)
@@ -455,7 +490,7 @@ export default function Studio() {
             Svara<span className="brand-light"> Studio</span>
           </span>
         </a>
-        <div className="workspace-label">YOUR CREATIVE WORKSPACE</div>
+        <div className="workspace-label">YOUR NEXT BIG LOCAL IDEA</div>
         <button
           className="new-session"
           onClick={newSession}
@@ -499,7 +534,7 @@ export default function Studio() {
         <div className="sidebar-footer">
           <span className="avatar">P</span>
           <div>
-            <strong>Personal workspace</strong>
+            <strong>Campaign workspace</strong>
             <small>Saved on this browser</small>
           </div>
         </div>
@@ -520,7 +555,7 @@ export default function Studio() {
             <strong>{session?.title || "Your next idea"}</strong>
           </div>
           <span className="provider">
-            <span /> Powered by CallMissed
+            <span /> Voice + images by CallMissed
           </span>
         </header>
         <div className="mobile-tabs">
@@ -537,14 +572,27 @@ export default function Studio() {
             <ImageIcon size={15} /> Canvas
           </button>
         </div>
+        <div className="campaign-ribbon">
+          <span className={session?.messages.length ? "complete" : ""}>
+            <span>01</span> Talk it through
+          </span>
+          <ChevronRight size={13} />
+          <span className={session?.image ? "complete" : ""}>
+            <span>02</span> Create your poster
+          </span>
+          <ChevronRight size={13} />
+          <button onClick={() => setSiteOpen(true)}>
+            <span>03</span> Build your website <ArrowUpRight size={14} />
+          </button>
+        </div>
         <div className="workarea">
           <section
             className={`conversation ${tab === "chat" ? "mobile-active" : ""}`}
           >
             <div className="section-heading">
               <div>
-                <span className="eyebrow">MAKE ROOM FOR IDEAS</span>
-                <h1>Let’s create something.</h1>
+                <span className="eyebrow">SPEAK IT. SHAPE IT. SHARE IT.</span>
+                <h1>Your next customer starts here.</h1>
               </div>
               <button
                 className="icon-btn"
@@ -569,13 +617,13 @@ export default function Studio() {
                     <AudioLines size={37} strokeWidth={1.4} />
                   </div>
                   <h2>
-                    Good ideas start
+                    Big things start
                     <br />
-                    with a conversation.
+                    with a local idea.
                   </h2>
                   <p>
-                    Type a thought. Talk it through. Turn it into
-                    <br className="desktop-break" /> something you can see.
+                    Speak your next offer. Create the poster. Give it
+                    <br className="desktop-break" /> a place on the web.
                   </p>
                   <div className="suggestions">
                     <button onClick={() => setText(cafe)}>
@@ -949,12 +997,36 @@ export default function Studio() {
                 Clear all local sessions
               </button>
             </details>
+            <button
+              className="website-launch"
+              disabled={!unlocked}
+              onClick={() => setSiteOpen(true)}
+            >
+              <span className="website-launch-icon">
+                <Globe size={22} />
+              </span>
+              <span>
+                <strong>Give your idea a home.</strong>
+                <small>Build a custom business website</small>
+              </span>
+              <ArrowUpRight size={18} />
+            </button>
             <div className="canvas-footer">
               <LockKeyhole size={13} /> Your API key stays on the server.
             </div>
           </aside>
         </div>
       </main>
+      {siteOpen && session && (
+        <WebsiteStudio
+          brief={session.websiteBrief ?? session.prompt ?? ""}
+          image={session.image}
+          result={session.website}
+          onBrief={(websiteBrief) => update((s) => ({ ...s, websiteBrief }))}
+          onResult={(website) => update((s) => ({ ...s, website }))}
+          onClose={() => setSiteOpen(false)}
+        />
+      )}
       {authChecked && !unlocked && (
         <div className="access-overlay">
           <form
@@ -990,7 +1062,7 @@ export default function Studio() {
                 {error}
               </p>
             )}
-            <small>Powered exclusively by CallMissed</small>
+            <small>CallMissed voice & images · OpenAI websites</small>
           </form>
         </div>
       )}

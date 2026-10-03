@@ -53,3 +53,7 @@ All paid checks were sent through the app's reservation boundary. Five paid oper
 No test auto-starts a microphone or image operation on page load. Browser image testing was an explicit one-time integration check; the reusable automated suite uses mocks and cannot consume credits.
 
 Secret scan: 28 staged source/configuration files and 17 browser JavaScript assets contained no API key. Environment files, runtime ledger and smoke-test artifacts are ignored.
+
+## Expanded campaign workspace
+
+14 automated tests pass, including generated HTML sanitization, English/Hindi voice draft routing, website ownership/publication and separate spending reservations. The Sites port passes TypeScript and Worker production build. Local Worker preview verified reviewer login, website editor, preset drafts, paused generation and mobile layout with no horizontal overflow. No paid OpenAI generation was performed. Sites reports production deployment succeeded; a live browser end-to-end test is pending.

@@ -14,9 +14,11 @@
     "livekit-client": "^2.15.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.0",
+    "postcss": "^8.5.28",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
+    "sanitize-html": "^2.18.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
@@ -24,11 +26,12 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/sanitize-html": "^2.16.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },
   "overrides": {
-    "postcss": "^8.5.23"
+    "postcss": "$postcss"
   },
   "allowScripts": {
     "better-sqlite3": true,

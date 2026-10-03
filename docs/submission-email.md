@@ -1,3 +1,5 @@
+> Do not submit the expanded OpenAI website-builder version as CallMissed-only. Use the original `callmissed-only-v1` version or get the issuer’s written exception first.
+
 To: durvesh@callmissed.com
 Subject: AI & Voice Pipeline Intern take-home — Svara Studio — Preethesh
 
