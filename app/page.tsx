@@ -27,7 +27,7 @@ import {
 import { WebsiteStudio } from "@/components/WebsiteStudio";
 import { VoiceCommands, type VoiceKind } from "@/lib/voice-actions";
 import type { WebsiteResult } from "@/lib/website";
-import { SSEDecoder } from "@/lib/sse";
+import { readSSE } from "@/lib/sse";
 import type { Room as RoomType } from "livekit-client";
 type Message = {
   role: "user" | "assistant";
@@ -233,39 +233,32 @@ export default function Studio() {
         },
         abort.current.signal,
       );
-      const reader = r.body!.getReader();
-      const decoder = new TextDecoder();
-      const parser = new SSEDecoder();
-      while (true) {
-        const { done: ended, value } = await reader.read();
-        if (ended) break;
-        for (const event of parser.push(
-          decoder.decode(value, { stream: true }),
-        )) {
-          if (event === "[DONE]") {
-            done = true;
-            continue;
-          }
-          const d = JSON.parse(event);
-          if (d.error)
-            throw new Error("The provider ended the response with an error.");
-          const delta = d.choices?.[0]?.delta?.content;
-          if (delta) {
-            if (first) {
-              setLatency(Math.round(performance.now() - started));
-              first = false;
-            }
-            answer += delta;
-            update(
-              (s) => ({
-                ...s,
-                messages: [...messages, { role: "assistant", content: answer }],
-              }),
-              id,
-            );
-          }
-          if (d.usage) setUsage(d.usage.total_tokens);
+      if (!r.body) throw new Error("The provider returned no response stream.");
+      for await (const event of readSSE(r.body)) {
+        if (event === "") continue;
+        if (event === "[DONE]") {
+          done = true;
+          break;
         }
+        const d = JSON.parse(event);
+        if (d.error)
+          throw new Error("The provider ended the response with an error.");
+        const delta = d.choices?.[0]?.delta?.content;
+        if (delta) {
+          if (first) {
+            setLatency(Math.round(performance.now() - started));
+            first = false;
+          }
+          answer += delta;
+          update(
+            (s) => ({
+              ...s,
+              messages: [...messages, { role: "assistant", content: answer }],
+            }),
+            id,
+          );
+        }
+        if (d.usage) setUsage(d.usage.total_tokens);
       }
       if (!done)
         throw new Error(
