@@ -17,3 +17,9 @@ New Sites are private to their owner. A generated website's publish action makes
 Use npm install, npm run dev, npm run db:generate for schema changes, and the Sites build workflow for publishing. Database migrations are in drizzle/. Do not edit already-applied migrations. Store local development credentials only in ignored environment files.
 
 No automatic paid requests are made on page load. Live microphone playback was reported successful by the user on the original local app. Hosted microphone behavior still requires a user test.
+
+## Verification
+
+`npm test` runs the actual hosted storage adapters in an isolated Cloudflare Worker emulator. It verifies concurrent budget reservations, duplicate suppression, separate provider allowances, burst limiting, login throttling, voice ownership, and R2-backed private/published/unpublished pages. It makes no paid API requests. The local Next.js implementation has 14 additional route, stream, sanitizer and voice-intent tests in the main branch.
+
+The production database schema was inspected after deployment and includes all three expected tables. At that inspection its operations table was empty. The local hosted-runtime preview passed reviewer login and mobile editor checks. Live OpenAI generation remains unverified until its spending allowance is supplied.
