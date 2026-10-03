@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { equal, identity, issue } from "@/lib/auth";
-import { ledger } from "@/lib/ledger";
+import { ledger, parseAllowance } from "@/lib/ledger";
 import { instructions, voiceInstructions, models, provider } from "@/lib/provider";
 export const runtime = "nodejs";
 const message = z.object({
@@ -17,19 +17,27 @@ const requestSchema = z.object({
 export async function GET(req: Request) {
   try {
     identity(req);
+  } catch {
+    return Response.json(
+      { error: "Enter the reviewer access code to continue." },
+      { status: 401 },
+    );
+  }
+  try {
+    const allowance = Math.min(parseAllowance(process.env.APP_LIMIT_CENTS), 1500);
     return Response.json(
       {
         models,
-        enabled: process.env.LIVE_ENABLED === "true",
+        enabled: process.env.LIVE_ENABLED === "true" && allowance > 0,
         reservedCents: await ledger().total(),
-        limitCents: Number(process.env.APP_LIMIT_CENTS || 0),
+        limitCents: allowance,
       },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
     return Response.json(
-      { error: "Enter the reviewer access code to continue." },
-      { status: 401 },
+      { error: "The spending allowance or usage ledger needs attention. Live calls are unavailable." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
 }
@@ -104,14 +112,14 @@ export async function POST(req: Request) {
       throw new Error("Conversation is too long. Start a new session.");
     if (path === "image" && !data.prompt)
       throw new Error("Add an image prompt first.");
-    const allowance = Math.min(Number(process.env.APP_LIMIT_CENTS || 0), 1500);
+    const allowance = Math.min(parseAllowance(process.env.APP_LIMIT_CENTS), 1500);
     const voiceSeconds = Math.min(180, Math.max(60, Math.floor((allowance - await ledger().total()) / 50) * 60));
     await ledger().reserve(
       data.requestId,
       owner,
       path!,
       path === "chat" ? 5 : path === "image" ? 35 : (voiceSeconds / 60) * 50,
-      Math.min(Number(process.env.APP_LIMIT_CENTS || 0), 1500),
+      allowance,
     );
     if (path === "chat") {
       const r = await provider(
