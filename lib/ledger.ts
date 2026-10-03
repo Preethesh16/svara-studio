@@ -1,6 +1,13 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+export function parseAllowance(value: string | undefined): number {
+  const cents = Number(value || 0);
+  if (!Number.isSafeInteger(cents) || cents < 0)
+    throw new Error("Spending allowance must be a non-negative whole number of cents.");
+  return cents;
+}
+
 export function createLedger(path: string) {
   mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
@@ -18,14 +25,21 @@ export function createLedger(path: string) {
         cents: number,
         limit: number,
       ) => {
+        if (!Number.isSafeInteger(cents) || cents <= 0)
+          throw new Error("Reservation cost must be a positive whole number of cents.");
+        if (!Number.isSafeInteger(limit) || limit < 0)
+          throw new Error("Spending allowance must be a non-negative whole number of cents.");
         if (db.prepare("SELECT id FROM operations WHERE id=?").get(id))
           throw new Error("Duplicate request. Start a new request explicitly.");
-        const total = (
-          db
-            .prepare("SELECT COALESCE(SUM(cents),0) AS n FROM operations")
-            .get() as { n: number }
-        ).n;
-        if (total + cents > limit)
+        const usage = db.prepare(`
+          SELECT COALESCE(SUM(cents),0) AS n,
+            COUNT(CASE WHEN typeof(cents) != 'integer' OR cents <= 0 OR cents > ? THEN 1 END) AS invalid
+          FROM operations
+        `).get(Number.MAX_SAFE_INTEGER) as { n: number; invalid: number };
+        const total = usage.n;
+        if (usage.invalid || !Number.isSafeInteger(total) || total < 0)
+          throw new Error("Usage ledger contains invalid amounts. No request was sent.");
+        if (cents > limit - total)
           throw new Error("Demo allowance exhausted. No request was sent.");
         const recent = (
           db

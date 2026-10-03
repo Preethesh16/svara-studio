@@ -1,12 +1,13 @@
-import { createLedger } from "./ledger";
+import { createLedger, parseAllowance } from "./ledger";
 import { websiteSchema } from "./website";
 export const websiteModel = "gpt-4.1-mini-2025-04-14";
 let usage: ReturnType<typeof createLedger>;
 export function websiteEnabled() {
-  return (
-    !!process.env.OPENAI_API_KEY &&
-    Number(process.env.OPENAI_LIMIT_CENTS || 0) >= 10
-  );
+  try {
+    return !!process.env.OPENAI_API_KEY && parseAllowance(process.env.OPENAI_LIMIT_CENTS) >= 10;
+  } catch {
+    return false;
+  }
 }
 export async function generateWebsite(
   brief: string,
@@ -18,8 +19,8 @@ export async function generateWebsite(
     throw new Error(
       "Website generation needs the server’s OpenAI key. Your brief is saved; chat, images and voice remain available.",
     );
-  const limit = Number(process.env.OPENAI_LIMIT_CENTS || 0);
-  if (!Number.isFinite(limit) || limit < 10)
+  const limit = parseAllowance(process.env.OPENAI_LIMIT_CENTS);
+  if (limit < 10)
     throw new Error(
       "Set a separate OpenAI spending allowance before generating websites.",
     );
