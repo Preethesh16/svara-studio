@@ -25,7 +25,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 import { WebsiteStudio } from "@/components/WebsiteStudio";
-import { voiceDraftIntent } from "@/lib/voice-draft";
+import { VoiceCommands, type VoiceKind } from "@/lib/voice-actions";
 import type { WebsiteResult } from "@/lib/website";
 import { SSEDecoder } from "@/lib/sse";
 import type { Room as RoomType } from "livekit-client";
@@ -79,6 +79,8 @@ export default function Studio() {
     [tab, setTab] = useState("chat"),
     [sidebar, setSidebar] = useState(false);
   const [siteOpen, setSiteOpen] = useState(false);
+  const [voiceLimit, setVoiceLimit] = useState(180);
+  const pendingVoice = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptSeen = useRef(new Set<string>());
   const [code, setCode] = useState(""),
     [unlocked, setUnlocked] = useState(false),
@@ -153,6 +155,7 @@ export default function Studio() {
         setElapsed(Math.floor((Date.now() - callStart.current) / 1000));
     }, 1000);
     const leave = () => {
+      if (pendingVoice.current) clearTimeout(pendingVoice.current);
       voiceEpoch.current++;
       room.current?.localParticipant.audioTrackPublications.forEach((p) =>
         p.track?.stop(),
@@ -338,16 +341,45 @@ export default function Studio() {
         await api("end", { requestId: crypto.randomUUID(), id });
       } catch {
         setError(
-          "Audio stopped. Server hangup could not be confirmed; the provider’s 60-second limit still applies.",
+          "Audio stopped. Server hangup could not be confirmed; the provider’s bounded session limit still applies.",
         );
       }
     void refresh();
+  }
+  async function runVoiceAction(kind: VoiceKind, brief: string, target: string) {
+    if (operation.current) { pendingVoice.current = setTimeout(() => void runVoiceAction(kind, brief, target), 500); return; }
+    operation.current = true;
+    setError("");
+    const prompt = (`Create the requested ${kind === "image" ? "image" : "business website"} using these spoken requirements. Use sensible defaults, include the latest refinements, and do not invent business facts.\n` + brief).slice(0, kind === "image" ? 2000 : 4000);
+    setBusy(kind);
+    if (kind === "image") { setTab("canvas"); update(s => ({...s, prompt}), target); }
+    else { update(s => ({...s, websiteBrief: prompt}), target); setSiteOpen(true); }
+    update(s => ({...s,messages:[...s.messages,{role:"assistant",content:kind === "image" ? "Generating your image from your voice request…" : "Building your website from your voice request…"}]}),target);
+    try {
+      if (kind === "image") {
+        const d = await (await api("image", {requestId:crypto.randomUUID(),prompt})).json() as {image:string;model:string;prompt:string};
+        update(s => ({...s,image:d.image,imageModel:d.model,imagePrompt:d.prompt}),target);
+      } else {
+        const r = await fetch("/api/website",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"generate",requestId:crypto.randomUUID(),brief:prompt})});
+        const d = await r.json() as WebsiteResult & {error?:string};
+        if (!r.ok) throw new Error(d.error || "Website generation failed.");
+        update(s => ({...s,website:d}),target);
+      }
+      const message = kind === "image" ? "Your image is ready in the canvas." : "Your website is ready in Website studio. Preview, download or publish it there.";
+      setNotice(message);
+      update(s => ({...s,messages:[...s.messages,{role:"assistant",content:message}]}),target);
+    } catch (e) {
+      const message = (e as Error).message;
+      setError(message);
+      update(s => ({...s,messages:[...s.messages,{role:"assistant",content:`${kind === "image" ? "Image" : "Website"} generation failed: ${message}. Say “try again” for an explicit retry.`}]}),target);
+    } finally { setBusy(""); operation.current=false; void refresh(); }
   }
   async function startCall() {
     if (voiceLock.current || !session) return;
     voiceLock.current = true;
     const epoch = ++voiceEpoch.current;
     const target = active;
+    const commands = new VoiceCommands(siteOpen ? ["Build a website: " + (session.websiteBrief || session.prompt || "business website")] : session.messages.filter(m=>m.role === "user").map(m=>m.content));
     transcriptSeen.current.clear();
     setVoice("Connecting");
     setError("");
@@ -365,6 +397,7 @@ export default function Studio() {
         return;
       }
       voiceId.current = d.id;
+      setVoiceLimit(d.maxDurationSeconds || 180);
       const { Room, RoomEvent, Track } = await import("livekit-client");
       const r = new Room();
       room.current = r;
@@ -399,28 +432,13 @@ export default function Studio() {
             }),
             target,
           );
-          const intent = isUser ? voiceDraftIntent(seg.text) : null;
-          if (intent) {
-            setText((current) =>
-              [current, seg.text].filter(Boolean).join("\n").slice(0, 4000),
-            );
-            if (intent === "image") {
-              update(
-                (s) => ({ ...s, prompt: seg.text.slice(0, 2000) }),
-                target,
-              );
-              setNotice(
-                "Your spoken image request is now an editable chat draft and image brief. Review it before generating.",
-              );
-            } else {
-              update(
-                (s) => ({ ...s, websiteBrief: seg.text.slice(0, 4000) }),
-                target,
-              );
-              setNotice(
-                "Your spoken website request is saved. Open Website studio to refine and build it.",
-              );
-            }
+          const action = commands.accept(seg.id, seg.text, isUser);
+          if (action) {
+            if (pendingVoice.current) clearTimeout(pendingVoice.current);
+            if (!action.cancel) {
+              setNotice(`Starting your ${action.kind} from your voice request…`);
+              pendingVoice.current = setTimeout(() => void runVoiceAction(action.kind, action.brief, target), 1500);
+            } else setNotice("Queued voice generation cancelled. Any already-running request may still complete.");
           }
         }
       });
@@ -448,7 +466,7 @@ export default function Studio() {
       setVoice("Listening");
       setTimeout(() => {
         if (epoch === voiceEpoch.current) void endCall();
-      }, 60000);
+      }, (d.maxDurationSeconds || 180) * 1000);
     } catch (e) {
       preflight?.getTracks().forEach((t) => t.stop());
       await endCall();
@@ -754,8 +772,8 @@ export default function Studio() {
                   </strong>
                   <small>
                     {callActive
-                      ? `${elapsed}s / 60s · Fresh voice context`
-                      : "A real conversation, in your language"}
+                      ? `${elapsed}s / ${voiceLimit}s · Voice commands generate automatically`
+                      : "Ask by voice to create images or websites · up to 3 minutes"}
                   </small>
                 </div>
                 <select
@@ -954,7 +972,7 @@ export default function Studio() {
                 : "Approve & generate image"}
             </button>
             <p className="cost-note">
-              Est. $0.2604 · 1 image · Only runs when you approve
+              Est. $0.2604 · 1 image · Click or ask by voice to generate
             </p>
             <details className="details">
               <summary>
@@ -1019,6 +1037,10 @@ export default function Studio() {
       </main>
       {siteOpen && session && (
         <WebsiteStudio
+          voice={{active:callActive,state:voice,elapsed,limit:voiceLimit,muted,language,transcript:session.messages.filter(m=>m.source === "voice" && m.role === "user").at(-1)?.content || "",start:()=>void startCall(),end:()=>void endCall(),mute:()=>void toggleMute(),setLanguage}}
+          externalError={error}
+          externalBusy={busy === "website"}
+          onBusy={(value) => { operation.current = value; }}
           brief={session.websiteBrief ?? session.prompt ?? ""}
           image={session.image}
           result={session.website}

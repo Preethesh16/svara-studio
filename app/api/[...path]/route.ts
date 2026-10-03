@@ -2,7 +2,7 @@ import { runtimeEnv } from "@/lib/runtime-env";
 import { z } from "zod";
 import { equal, identity, issue } from "@/lib/auth";
 import { ledger } from "@/lib/ledger";
-import { instructions, models, provider } from "@/lib/provider";
+import { instructions, voiceInstructions, models, provider } from "@/lib/provider";
 export const runtime = "nodejs";
 const message = z.object({
   role: z.enum(["user", "assistant"]),
@@ -105,11 +105,13 @@ export async function POST(req: Request) {
       throw new Error("Conversation is too long. Start a new session.");
     if (path === "image" && !data.prompt)
       throw new Error("Add an image prompt first.");
+    const allowance = Math.min(Number(runtimeEnv.APP_LIMIT_CENTS || 0), 1500);
+    const voiceSeconds = Math.min(180, Math.max(60, Math.floor((allowance - await ledger().total()) / 50) * 60));
     await ledger().reserve(
       data.requestId,
       owner,
       path!,
-      path === "chat" ? 5 : path === "image" ? 35 : 50,
+      path === "chat" ? 5 : path === "image" ? 35 : (voiceSeconds / 60) * 50,
       Math.min(Number(runtimeEnv.APP_LIMIT_CENTS || 0), 1500),
     );
     if (path === "chat") {
@@ -164,22 +166,21 @@ export async function POST(req: Request) {
       });
     }
     const r = await provider("/v1/voice/sessions", {
-      system_prompt:
-        instructions +
-        " Keep spoken replies to two sentences. This call starts with fresh context.",
+      system_prompt: voiceInstructions,
       llm_model: "sarvam-105b",
       stt_model: models.stt,
       tts_model: models.tts,
       tts_provider: "sarvam",
       voice: "shubh",
       language: data.language || "en-IN",
-      max_duration_seconds: 60,
+      max_duration_seconds: voiceSeconds,
     });
     const d: any = await r.json();
     await ledger().bind(data.requestId, d.id);
     return Response.json({
       id: d.id,
       wsUrl: d.ws_url,
+      maxDurationSeconds: voiceSeconds,
       token: d.token,
       model: d.config?.llm_model || "sarvam-105b",
     });

@@ -12,9 +12,14 @@ import {
   Sparkles,
   X,
   Undo2,
+  Mic, MicOff, PhoneOff,
 } from "lucide-react";
 import type { WebsiteResult } from "@/lib/website";
 type Props = {
+  voice?: {active:boolean; state:string; elapsed:number; limit:number; muted:boolean; language:string; transcript:string; start:()=>void; end:()=>void; mute:()=>void; setLanguage:(s:string)=>void};
+  externalError?: string;
+  externalBusy?: boolean;
+  onBusy?: (busy: boolean) => void;
   brief: string;
   image?: string;
   result?: WebsiteResult;
@@ -23,6 +28,10 @@ type Props = {
   onClose: () => void;
 };
 export function WebsiteStudio({
+  voice,
+  externalError = "",
+  externalBusy = false,
+  onBusy,
   brief,
   image,
   result,
@@ -30,13 +39,14 @@ export function WebsiteStudio({
   onResult,
   onClose,
 }: Props) {
-  const [busy, setBusy] = useState(""),
+  const [localBusy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [enabled, setEnabled] = useState<boolean | null>(null),
     [mobile, setMobile] = useState(false),
     [copy, setCopy] = useState(""),
     [embed, setEmbed] = useState(true),
     [autoPublish, setAutoPublish] = useState(false);
+  const busy = externalBusy ? "generate" : localBusy;
   const lock = useRef(false),
     dialog = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -59,8 +69,9 @@ export function WebsiteStudio({
     return d;
   }
   async function generate() {
-    if (lock.current) return;
+    if (lock.current || externalBusy) return;
     lock.current = true;
+    onBusy?.(true);
     setBusy("generate");
     setError("");
     try {
@@ -85,11 +96,13 @@ export function WebsiteStudio({
     } finally {
       setBusy("");
       lock.current = false;
+      onBusy?.(false);
     }
   }
   async function publish() {
-    if (!result || lock.current) return;
+    if (!result || lock.current || externalBusy) return;
     lock.current = true;
+    onBusy?.(true);
     setBusy("publish");
     setError("");
     try {
@@ -104,6 +117,7 @@ export function WebsiteStudio({
     } finally {
       setBusy("");
       lock.current = false;
+      onBusy?.(false);
     }
   }
   async function clipboard(text: string, key: string) {
@@ -188,6 +202,17 @@ export function WebsiteStudio({
               Describe your business, your customers and the feeling you want.
               Add only the contact details you want visitors to see.
             </p>
+            {voice && <div className="site-voice" aria-label="Website voice agent">
+              <strong><Mic size={17}/>{voice.active ? (voice.muted ? "Muted" : voice.state) : "Tell Svara what to build"}</strong>
+              <p>Say “build a website for my vegetable shop” or “make it green”. Your request starts automatically.</p>
+              <div className="site-voice-buttons">
+                <select aria-label="Website voice language" disabled={voice.active} value={voice.language} onChange={e=>voice.setLanguage(e.target.value)}><option value="en-IN">English</option><option value="hi-IN">हिन्दी</option></select>
+                {voice.active ? <><button onClick={voice.mute} aria-label={voice.muted ? "Unmute website microphone" : "Mute website microphone"}>{voice.muted ? <MicOff size={16}/> : <Mic size={16}/>}</button><button onClick={voice.end}><PhoneOff size={16}/> End voice</button></> : <button onClick={voice.start}> <Mic size={16}/> Talk to build</button>}
+              </div>
+              {voice.active && <small>{voice.elapsed}s / {voice.limit}s · Voice commands create automatically</small>}
+              {voice.transcript && <p className="site-voice-transcript" aria-live="polite">You: {voice.transcript}</p>}
+            </div>}
+            {externalError && <p role="alert" className="error-text">{externalError}</p>}
             <label htmlFor="website-brief">
               What should your website be like?
             </label>

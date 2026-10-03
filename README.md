@@ -23,3 +23,11 @@ No automatic paid requests are made on page load. Live microphone playback was r
 `npm test` runs the actual hosted storage adapters in an isolated Cloudflare Worker emulator. It verifies concurrent budget reservations, duplicate suppression, separate provider allowances, burst limiting, login throttling, voice ownership, and R2-backed private/published/unpublished pages. It makes no paid API requests. The local Next.js implementation has 14 additional route, stream, sanitizer and voice-intent tests in the main branch.
 
 The production database schema was inspected after deployment and includes all three expected tables. At that inspection its operations table was empty. The local hosted-runtime preview passed reviewer login and mobile editor checks. Live OpenAI generation remains unverified until its spending allowance is supplied.
+
+## Voice-driven creation
+
+Explicit spoken image or website requests now start generation automatically, with no second approval click. English, Hindi and common Hinglish requests are supported. Only final user transcripts trigger operations; repeated segments and repeated go-ahead commands without new details are suppressed. Refined details are carried into “do it now”; “try again” explicitly permits a new request after failure. “Stop” cancels a queued action, not a request already sent to the provider.
+
+Website studio includes microphone start/end, mute, language selection and the latest spoken requirement. It shares the same live call as the main workspace. When starting voice from the website editor, the existing brief seeds the website context; “make it green” rebuilds the page with those requirements. Generated pages open as previews; publication still uses the editor’s publish control.
+
+Calls last up to 180 seconds, reduced to 120 or 60 if needed to fit the remaining allowance. Each minute reserves 50 cents before minting the voice session, with the same duration enforced by the provider and client. The longer call does not increase the overall budget. Generation continues after the voice call ends.

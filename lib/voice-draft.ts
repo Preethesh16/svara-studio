@@ -1,9 +1,9 @@
-// Local intent routing never starts a billable operation.
+// Recognize explicit creative requests in English, Hindi and common Hinglish.
 export function voiceDraftIntent(text: string): "image" | "website" | null {
   if (/\b(don['’]?t|do not|never|stop)\b|मत\s|नहीं.*बना/i.test(text))
     return null;
   const asks =
-    /\b(generate|create|make|build|design|draw|want|need)\b|बना|चाहिए|तैयार|बनाओ/i.test(
+    /\b(generate|create|make|build|design|draw|want|need|banao|bana|banake|chahiye)\b|बना|चाहिए|तैयार|बनाओ/i.test(
       text,
     );
   if (!asks) return null;
@@ -12,7 +12,7 @@ export function voiceDraftIntent(text: string): "image" | "website" | null {
   )
     return "website";
   if (
-    /\b(image|poster|picture|graphic|artwork|banner)\b|पोस्टर|तस्वीर|चित्र|इमेज|बैनर/i.test(
+    /\b(image|poster|picture|graphic|artwork|banner|photo|tasveer)\b|पोस्टर|तस्वीर|चित्र|इमेज|बैनर/i.test(
       text,
     )
   )
