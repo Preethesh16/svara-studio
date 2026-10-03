@@ -4,7 +4,7 @@ This is an expanded product feature requested after the original CallMissed take
 
 ## Flow
 
-1. A spoken image or website command is recognized locally from final user transcript segments. English and Hindi phrase matching populates editable drafts. It never calls a paid API by itself; duplicate final segments are ignored.
+1. A spoken image or website command is recognized locally from final user transcript segments. English and Hindi phrase matching populates editable drafts. An explicit user request now starts generation automatically; duplicate final segments are ignored. Website studio also offers the same voice agent and contextual refinement commands.
 2. Describe the business in Website studio. Choose whether to include the existing CallMissed poster. OpenAI receives the text brief, not the poster bytes.
 3. The server reserves $0.10 in a separate SQLite ledger, then calls the OpenAI Responses API using `gpt-4.1-mini-2025-04-14`, a 6,000 output-token ceiling, structured JSON output and `store:false`. Responses include custom HTML/CSS and promotional copy. There are no automatic retries.
 4. HTML is sanitized, CSS remote-resource rules are removed, and a restrictive Content Security Policy is added. The iframe runs without script or same-origin permissions. Generated pages do not execute model-generated JavaScript.

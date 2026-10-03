@@ -1623,3 +1623,5 @@ h1 {
     scroll-behavior: auto !important;
   }
 }
+
+.site-voice{padding:16px;margin:18px 0;border:1px solid #c8b7ee;border-radius:16px;background:#fff}.site-voice strong{display:flex;gap:8px;align-items:center;color:#593aa2}.site-voice p{font-size:14px!important;line-height:1.5!important;margin:10px 0!important}.site-voice-buttons{display:flex;gap:8px;flex-wrap:wrap}.site-voice-buttons button,.site-voice-buttons select{padding:9px;border-radius:9px;border:1px solid #d4c8ea;background:#f5f0ff;display:inline-flex;align-items:center;gap:6px;font-size:14px}.site-voice small{display:block;margin-top:8px}.site-voice-transcript{max-height:100px;overflow:auto;color:#47375d}

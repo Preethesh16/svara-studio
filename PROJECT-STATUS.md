@@ -34,3 +34,7 @@ Expanded app deployed privately at https://svara-campaign-studio.preetheshcarval
 ## Public launch and live website verification
 
 User authorized public access and a $4 OpenAI allowance. The hosted app is public, with reviewer-code protection for paid tools. Live OpenAI generation returned a custom demo page and promotional copy (1,618 provider-reported tokens). Preview, automatic publication, opening the published page, and unpublishing were verified in the hosted browser. Two requests reserved 20 cents total: one failed before provider contact because of a Worker request setting; the corrected request succeeded. Hosted provider adapters now use manual redirect handling. Empty image placeholders are removed. Local OpenAI stays disabled to avoid a second $4 allocation. Browser automation could not confirm HTML download completion.
+
+## Voice creation update
+
+Explicit English/Hindi/Hinglish voice commands now automatically generate images or websites. Website studio has shared microphone, mute/end, language and transcript controls. Recent requirements feed follow-up creation commands and website refinements. Duplicate transcript events and repeated unchanged go-ahead commands are suppressed. Calls last up to 180 seconds, shortened to fit remaining budget at 50 reserved cents per minute. The public Sites build and actual Worker route/command tests passed; a live microphone check of this new flow remains a user test.

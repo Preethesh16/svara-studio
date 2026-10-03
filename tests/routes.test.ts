@@ -121,7 +121,7 @@ test("voice minting uses bounded Sarvam settings and cleanup is owner-scoped", a
   assert.equal(r.status, 200);
   const data = await r.json();
   assert.equal(data.token, "session-only-test-token");
-  assert.equal(JSON.parse(String(options?.body)).max_duration_seconds, 60);
+  assert.equal(JSON.parse(String(options?.body)).max_duration_seconds, 120);
   assert.equal(JSON.parse(String(options?.body)).tts_model, "bulbul:v3");
   const foreign = request("end", { requestId: randomUUID(), id });
   foreign.headers.set("cookie", "svara=" + issue());

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { equal, identity, issue } from "@/lib/auth";
 import { ledger } from "@/lib/ledger";
-import { instructions, models, provider } from "@/lib/provider";
+import { instructions, voiceInstructions, models, provider } from "@/lib/provider";
 export const runtime = "nodejs";
 const message = z.object({
   role: z.enum(["user", "assistant"]),
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       {
         models,
         enabled: process.env.LIVE_ENABLED === "true",
-        reservedCents: ledger().total(),
+        reservedCents: await ledger().total(),
         limitCents: Number(process.env.APP_LIMIT_CENTS || 0),
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     const path = new URL(req.url).pathname.split("/").at(-1);
     const input = JSON.parse(raw);
     if (path === "login") {
-      ledger().attempts("global");
+      await ledger().attempts("global");
       if (
         !process.env.REVIEWER_CODE ||
         !equal(String(input.code || ""), process.env.REVIEWER_CODE)
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     const owner = identity(req);
     const data = requestSchema.parse(input);
     if (path === "end") {
-      if (!data.id || !ledger().owns(owner, data.id))
+      if (!data.id || !(await ledger().owns(owner, data.id)))
         return Response.json({ error: "Session not found." }, { status: 404 });
       await provider(
         `/v1/voice/sessions/${data.id}`,
@@ -104,11 +104,13 @@ export async function POST(req: Request) {
       throw new Error("Conversation is too long. Start a new session.");
     if (path === "image" && !data.prompt)
       throw new Error("Add an image prompt first.");
-    ledger().reserve(
+    const allowance = Math.min(Number(process.env.APP_LIMIT_CENTS || 0), 1500);
+    const voiceSeconds = Math.min(180, Math.max(60, Math.floor((allowance - await ledger().total()) / 50) * 60));
+    await ledger().reserve(
       data.requestId,
       owner,
       path!,
-      path === "chat" ? 5 : path === "image" ? 35 : 50,
+      path === "chat" ? 5 : path === "image" ? 35 : (voiceSeconds / 60) * 50,
       Math.min(Number(process.env.APP_LIMIT_CENTS || 0), 1500),
     );
     if (path === "chat") {
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
         },
         req.signal,
       );
-      const d = await r.json();
+      const d: any = await r.json();
       const item = d.data?.[0];
       if (!item?.b64_json)
         throw new Error(
@@ -163,22 +165,21 @@ export async function POST(req: Request) {
       });
     }
     const r = await provider("/v1/voice/sessions", {
-      system_prompt:
-        instructions +
-        " Keep spoken replies to two sentences. This call starts with fresh context.",
+      system_prompt: voiceInstructions,
       llm_model: "sarvam-105b",
       stt_model: models.stt,
       tts_model: models.tts,
       tts_provider: "sarvam",
       voice: "shubh",
       language: data.language || "en-IN",
-      max_duration_seconds: 60,
+      max_duration_seconds: voiceSeconds,
     });
-    const d = await r.json();
-    ledger().bind(data.requestId, d.id);
+    const d: any = await r.json();
+    await ledger().bind(data.requestId, d.id);
     return Response.json({
       id: d.id,
       wsUrl: d.ws_url,
+      maxDurationSeconds: voiceSeconds,
       token: d.token,
       model: d.config?.llm_model || "sarvam-105b",
     });
